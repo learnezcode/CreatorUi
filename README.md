@@ -1,2 +1,2 @@
-# CreatorUi
-CreatorUi is a repo to create streamlit ui for ezcode to simplify course creator's work.
+# ezedit
+ezedit is an toolkit for ezcode to simplify course creator's work.
