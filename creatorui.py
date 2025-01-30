@@ -1,6 +1,8 @@
 import streamlit as st
 import yaml
 import io
+import os
+import cogenai as generate_courses  # Import the main function from main.py
 
 # Translations dictionary
 translations = {
@@ -14,9 +16,11 @@ translations = {
         'chapter_name': "Название главы для темы",
         'info': "Информация для темы",
         'generate_yaml': "Сгенерировать YAML",
+        'generate_courses': "Сгенерировать курсы",
         'generated_yaml': "Сгенерированный YAML:",
         'download_yaml': "Скачать YAML",
-        'error': "Пожалуйста, заполните все поля перед генерацией YAML."
+        'error': "Пожалуйста, заполните все поля перед генерацией YAML.",
+        'courses_generated': "Курсы успешно сгенерированы!"
     },
     'be': {
         'title': "Стварэнне курса!",
@@ -28,9 +32,11 @@ translations = {
         'chapter_name': "Назва главы для тэмы",
         'info': "Інфармацыя для тэмы",
         'generate_yaml': "Сгенераваць YAML",
+        'generate_courses': "Сгенераваць курсы",
         'generated_yaml': "Сгенераваны YAML:",
         'download_yaml': "Спампаваць YAML",
-        'error': "Калі ласка, запоўніце ўсе палі перад генерацыяй YAML."
+        'error': "Калі ласка, запоўніце ўсе палі перад генерацыяй YAML.",
+        'courses_generated': "Курсы паспяхова створаны!"
     },
     'en': {
         'title': "Course Creation!",
@@ -42,9 +48,11 @@ translations = {
         'chapter_name': "Chapter name for topic",
         'info': "Info for topic",
         'generate_yaml': "Generate YAML",
+        'generate_courses': "Generate Courses",
         'generated_yaml': "Generated YAML:",
         'download_yaml': "Download YAML",
-        'error': "Please fill in all fields before generating YAML."
+        'error': "Please fill in all fields before generating YAML.",
+        'courses_generated': "Courses successfully generated!"
     }
 }
 
@@ -105,21 +113,52 @@ for i in range(num_topics):
     if chapter_name and info:
         topics.append({'chapter_name': chapter_name, 'info': info})
 
-# Button to generate YAML
-if st.button(translations[language]['generate_yaml']):
-    if course_title and course_description and topics:
-        yaml_output = create_yaml(course_title, course_description, topics)
-        st.subheader(translations[language]['generated_yaml'])
-        st.code(yaml_output, language='yaml')
-        
-        # Create a download button for the YAML file
-        yaml_bytes = io.BytesIO(yaml_output.encode('utf-8'))
-        st.download_button(
-            label=translations[language]['download_yaml'],
-            data=yaml_bytes,
-            file_name=f"{course_title.replace(' ', '_')}.yaml",
-            mime="text/yaml"
-        )
-        
-    else:
-        st.error(translations[language]['error'])
+# Buttons row
+col1, col2 = st.columns(2)  # Create two columns for buttons
+
+with col1:
+    # Button to generate YAML
+    if st.button(translations[language]['generate_yaml']):
+        if course_title and course_description and topics:
+            yaml_output = create_yaml(course_title, course_description, topics)
+            st.subheader(translations[language]['generated_yaml'])
+            st.code(yaml_output, language='yaml')
+            
+            # Create a download button for the YAML file
+            yaml_bytes = io.BytesIO(yaml_output.encode('utf-8'))
+            st.download_button(
+                label=translations[language]['download_yaml'],
+                data=yaml_bytes,
+                file_name=f"{course_title.replace(' ', '_')}.yaml",
+                mime="text/yaml"
+            )
+        else:
+            st.error(translations[language]['error'])
+
+with col2:
+    # Button to generate courses
+    if st.button(translations[language]['generate_courses']):
+        if course_title and course_description and topics:
+            # Save the YAML to a temporary file
+            yaml_output = create_yaml(course_title, course_description, topics)
+            temp_file_path = "temp_course.yaml"
+            with open(temp_file_path, 'w', encoding='utf-8') as temp_file:
+                temp_file.write(yaml_output)
+            
+            # Generate courses using main.py
+            generate_courses()
+            
+            # Display success message
+            st.success(translations[language]['courses_generated'])
+            
+            # Optionally, display the generated YAML files
+            output_dir = "output"
+            if os.path.exists(output_dir):
+                for lang in ['en', 'ru', 'by']:
+                    file_path = os.path.join(output_dir, f"course_{lang}.yaml")
+                    if os.path.exists(file_path):
+                        with open(file_path, 'r', encoding='utf-8') as file:
+                            st.subheader(f"Generated YAML for {lang.upper()}:")
+                            st.code(file.read(), language='yaml')
+        else:
+            st.error(translations[language]['error'])
