@@ -40,14 +40,10 @@ def translator(text, lang):
             time.sleep(60)
 
 def generate_language(course_path, lang):
-    """
-    Generates a course in the specified language using g4f.
-    """
     with open(course_path, 'r') as file:
         doc = file.read().replace('\n', '\n')
     info = yaml.load(doc, Loader=yaml.Loader)
     
-    # Translate course name and description
     name_t = translator(info['name'], lang.capitalize())
     desc_t = translator(info['description'], lang.capitalize())
     print(f'Generating course\nName: {name_t}\nDescription: {desc_t}')
@@ -55,7 +51,7 @@ def generate_language(course_path, lang):
     course = {'name': name_t, 'desc': desc_t, 'lang': lang, 'content': []}
     message_list = [
         {"role": "system", "content": "You're an AI Programming teacher ezcode. You need to write text for a course with chapters. User gives you chapter name and instructions for this chapter. Always write all variables in English. NEVER USE HEADING MARKDOWN, instead make text bold without heading markdown."},
-        {"role": "user", "content": f"Course: {course['name']}. Description: {course['desc']}. Chapter name: {info['course'][1]['chapter-name']}\nInstructions: {info['course'][1]['info']}. Write it in {lang.capitalize()}. NEVER USE HEADING MARKDOWN, instead make text bold without heading markdown."}
+        {"role": "user", "content": f"Course: {course['name']}. Description: {course['desc']}. Chapter name: {info['course'][0]['chapter-name']}\nInstructions: {info['course'][0]['info']}. Write it in {lang.capitalize()}. NEVER USE HEADING MARKDOWN, instead make text bold without heading markdown."}
     ]
     
     print(f'Generating {lang.upper()}')
@@ -63,10 +59,10 @@ def generate_language(course_path, lang):
         if i == 0:
             response_app = get_response(message_list)
         else:
-            message_list.append({"role": "user", "content": f"Chapter name: {info['course'][i+1]['chapter-name']}\nInstructions: {info['course'][i+1]['info']}. Write it in {lang.capitalize()} language. NEVER USE HEADING MARKDOWN, instead make text bold without heading markdown."})
+            message_list.append({"role": "user", "content": f"Chapter name: {info['course'][i]['chapter-name']}\nInstructions: {info['course'][i]['info']}. Write it in {lang.capitalize()} language. NEVER USE HEADING MARKDOWN, instead make text bold without heading markdown."})
             response_app = get_response(message_list)
         
-        course['content'].append({"chapter": i+1, "chapter-name": info['course'][i+1]['chapter-name'], "text": response_app})
+        course['content'].append({"chapter": i+1, "chapter-name": info['course'][i]['chapter-name'], "text": response_app})
         message_list.append({'role': 'assistant', 'content': response_app})
     
     return course

@@ -2,12 +2,16 @@ import streamlit as st
 import yaml
 import io
 import os
-import cogenai as generate_courses  # Import the main function from main.py
+from cogenai import generate_course
 
 # Translations dictionary
 translations = {
     'ru': {
         'title': "Создание курса!",
+        'en_tab': 'Английская версия',
+        'ru_tab': 'Русская версия',
+        'by_tab': 'Белорусская версия',
+        'download_course': 'Скачать курс',
         'send_file': "Отправьте файл сюда",
         'course_title': "Введите название курса:",
         'course_description': "Введите описание курса:",
@@ -24,6 +28,10 @@ translations = {
     },
     'be': {
         'title': "Стварэнне курса!",
+        'en_tab': 'Англійская версія',
+        'ru_tab': 'Руская версія',
+        'by_tab': 'Беларуская версія',
+        'download_course': 'Спампаваць курс',
         'send_file': "Адпраўце файл сюды",
         'course_title': "Увядзіце назву курса:",
         'course_description': "Увядзіце апісанне курса:",
@@ -40,6 +48,10 @@ translations = {
     },
     'en': {
         'title': "Course Creation!",
+        'en_tab': 'English Version',
+        'ru_tab': 'Russian Version',
+        'by_tab': 'Belarusian Version',
+        'download_course': 'Download Course',
         'send_file': "Send file here",
         'course_title': "Enter the name of the course:",
         'course_description': "Enter the description of the course:",
@@ -72,18 +84,22 @@ def create_yaml(course_title, course_description, topics):
     course_data = {
         'name': course_title,
         'description': course_description,
-        'course': {}
+        'course': []
     }
-    
-    for i, topic in enumerate(topics, start=1):
-        chapter_name = topic['chapter_name']
-        info = topic['info']
-        course_data['course'][i] = {
-            'chapter-name': chapter_name,
-            'info': info
-        }
-    
-    return yaml.dump(course_data, sort_keys=False)
+    for topic in topics:
+        course_data['course'].append({
+            'chapter-name': topic['chapter_name'],
+            'info': topic['info']
+        })
+    return yaml.dump(course_data, sort_keys=False, allow_unicode=True)
+
+def save_course_to_yaml(course, lang, output_dir="output"):
+    import os
+    os.makedirs(output_dir, exist_ok=True)
+    file_path = os.path.join(output_dir, f"course_{lang}.yaml")
+    with open(file_path, 'w', encoding='utf-8') as file:
+        yaml.dump(course, file, allow_unicode=True, sort_keys=False)
+    print(f"Course saved to {file_path}")
 
 # Streamlit UI
 st.title(translations[language]['title'])
@@ -136,29 +152,40 @@ with col1:
             st.error(translations[language]['error'])
 
 with col2:
-    # Button to generate courses
     if st.button(translations[language]['generate_courses']):
         if course_title and course_description and topics:
-            # Save the YAML to a temporary file
             yaml_output = create_yaml(course_title, course_description, topics)
-            temp_file_path = "temp_course.yaml"
-            with open(temp_file_path, 'w', encoding='utf-8') as temp_file:
-                temp_file.write(yaml_output)
+            temp_file = "temp_course.yaml"
+            with open(temp_file, 'w', encoding='utf-8') as f:
+                f.write(yaml_output)
             
-            # Generate courses using main.py
-            generate_courses()
-            
-            # Display success message
-            st.success(translations[language]['courses_generated'])
-            
-            # Optionally, display the generated YAML files
-            output_dir = "output"
-            if os.path.exists(output_dir):
-                for lang in ['en', 'ru', 'by']:
-                    file_path = os.path.join(output_dir, f"course_{lang}.yaml")
-                    if os.path.exists(file_path):
-                        with open(file_path, 'r', encoding='utf-8') as file:
-                            st.subheader(f"Generated YAML for {lang.upper()}:")
-                            st.code(file.read(), language='yaml')
+            try:
+                courses = generate_course(temp_file)
+                # Create tabs for different languages
+                tabs = st.tabs([translations[language]['en_tab'], 
+                              translations[language]['ru_tab'], 
+                              translations[language]['by_tab']])
+                
+                for i, lang in enumerate(['en', 'ru', 'by']):
+                    with tabs[i]:
+                        if lang in courses:
+                            # Display course content
+                            st.code(courses[lang], language='yaml')
+                            
+                            # Create download button for this language
+                            st.download_button(
+                                label=translations[language]['download_course'],
+                                data=courses[lang],
+                                file_name=f"course_{lang}.yaml",
+                                mime="text/yaml",
+                                key=f"download_{lang}"
+                            )
+                        else:
+                            st.error(translations[language]['error_generation'] + lang.upper())
+                
+                st.success(translations[language]['courses_generated'])
+                
+            except Exception as e:
+                st.error(f"Generation failed: {str(e)}")
         else:
             st.error(translations[language]['error'])
